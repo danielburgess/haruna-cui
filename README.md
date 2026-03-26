@@ -105,16 +105,3 @@ The binary installs to `/usr/bin/haruna` and integrates normally with your deskt
 cmake --build build -j$(nproc)
 sudo cmake --install build
 ```
-
-# Dependencies
-Dependencies will be printed by `cmake` when building.
-
-# Build (upstream)
-
-```bash
-git clone https://invent.kde.org/multimedia/haruna.git
-cd haruna
-cmake -B build -G Ninja
-cmake --build build
-cmake --install build
-```
