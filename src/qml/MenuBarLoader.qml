@@ -32,7 +32,7 @@ Loader {
     asynchronous: !GeneralSettings.showMenuBar
     state: {
         const mainWindow = Window.window as Main
-        if (!mainWindow.isFullScreen() && GeneralSettings.showMenuBar) {
+        if (!mainWindow.isFullScreen() && !mainWindow.isCleanView() && GeneralSettings.showMenuBar) {
             return "visible"
         } else {
             return "hidden"

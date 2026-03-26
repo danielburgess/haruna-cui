@@ -420,6 +420,14 @@ ActionsModel::ActionsModel(QObject *parent)
     action.description = QString{};
     m_actions << action;
 
+    action.name = u"toggleCleanViewAction"_s;
+    action.text = i18nc("@action", "Toggle Clean View");
+    action.iconName = u"view-presentation"_s;
+    action.defaultShortcut = Qt::Key_C;
+    action.shortcut = getShortcut(action.name, action.defaultShortcut);
+    action.description = QString{};
+    m_actions << action;
+
     action.name = u"toggleMenuBarAction"_s;
     action.text = i18nc("@action", "Toggle Menu Bar");
     action.iconName = QString();

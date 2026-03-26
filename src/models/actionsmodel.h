@@ -129,6 +129,7 @@ Q_SIGNALS:
     void subtitleCycleDownAction();
     void toggleDeinterlacingAction();
     void toggleFullscreenAction();
+    void toggleCleanViewAction();
     void toggleMenuBarAction();
     void toggleHeaderAction();
     void togglePlaylistAction();

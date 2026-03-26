@@ -14,6 +14,18 @@ Menu {
 
     required property MpvVideo m_mpv
 
+    MenuItem {
+        action: HarunaApp.actions.toggleCleanViewAction
+        text: {
+            const mainWindow = Window.window as Main
+            return mainWindow?.isCleanView()
+                   ? i18nc("@action:inmenu", "Exit Clean View")
+                   : i18nc("@action:inmenu", "Clean View")
+        }
+    }
+
+    MenuSeparator {}
+
     MenuItem { action: HarunaApp.actions.playPauseAction }
     MenuItem { action: HarunaApp.actions.playNextAction }
     MenuItem { action: HarunaApp.actions.playPreviousAction }

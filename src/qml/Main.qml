@@ -24,6 +24,7 @@ ApplicationWindow {
     id: window
 
     property bool containsMouse: false
+    property bool cleanView: false
 
     property int previousVisibility: Window.Windowed
     property var acceptedSubtitleTypes: ["application/x-subrip", "text/x-ssa", "text/x-microdvd"]
@@ -202,7 +203,7 @@ ApplicationWindow {
         mouseActionsModel: mouseActionsModel
 
         width: window.contentItem.width
-        height: window.isFullScreen()
+        height: window.isFullScreen() || window.cleanView
                 ? window.contentItem.height
                 : window.contentItem.height - (footer.isFloating ? 0 : footer.height)
         anchors.left: PlaylistSettings.overlayVideo
@@ -285,6 +286,124 @@ ApplicationWindow {
             function onClosePlaylist() {
                 playlist.state = "hidden"
             }
+        }
+    }
+
+    // ── Clean view: hover titlebar ──────────────────────────────────────────
+    CleanViewTitleBar {
+        visible: window.cleanView
+        anchors.top: window.contentItem.top
+        anchors.left: window.contentItem.left
+        anchors.right: window.contentItem.right
+    }
+
+    // ── Clean view: window resize handles (native border is gone) ───────────
+    // Each handle is a thin strip/square at a window edge or corner. The
+    // DragHandler calls startSystemResize so the compositor does the actual
+    // resize; the HoverHandler just sets the appropriate cursor shape.
+
+    // Bottom edge
+    Item {
+        visible: window.cleanView
+        z: 199
+        anchors { bottom: window.contentItem.bottom; left: window.contentItem.left; right: window.contentItem.right }
+        height: 6
+        HoverHandler { cursorShape: Qt.SizeVerCursor }
+        DragHandler {
+            target: null
+            grabPermissions: PointerHandler.TakeOverForbidden
+            onActiveChanged: if (active) window.startSystemResize(Qt.BottomEdge)
+        }
+    }
+    // Left edge
+    Item {
+        visible: window.cleanView
+        z: 199
+        anchors { top: window.contentItem.top; bottom: window.contentItem.bottom; left: window.contentItem.left }
+        width: 6
+        HoverHandler { cursorShape: Qt.SizeHorCursor }
+        DragHandler {
+            target: null
+            grabPermissions: PointerHandler.TakeOverForbidden
+            onActiveChanged: if (active) window.startSystemResize(Qt.LeftEdge)
+        }
+    }
+    // Right edge
+    Item {
+        visible: window.cleanView
+        z: 199
+        anchors { top: window.contentItem.top; bottom: window.contentItem.bottom; right: window.contentItem.right }
+        width: 6
+        HoverHandler { cursorShape: Qt.SizeHorCursor }
+        DragHandler {
+            target: null
+            grabPermissions: PointerHandler.TakeOverForbidden
+            onActiveChanged: if (active) window.startSystemResize(Qt.RightEdge)
+        }
+    }
+    // Top edge (outside the CleanViewTitleBar hover zone)
+    Item {
+        visible: window.cleanView
+        z: 199
+        anchors { top: window.contentItem.top; left: window.contentItem.left; right: window.contentItem.right }
+        height: 6
+        HoverHandler { cursorShape: Qt.SizeVerCursor }
+        DragHandler {
+            target: null
+            grabPermissions: PointerHandler.TakeOverForbidden
+            onActiveChanged: if (active) window.startSystemResize(Qt.TopEdge)
+        }
+    }
+    // Bottom-left corner
+    Item {
+        visible: window.cleanView
+        z: 200
+        anchors { bottom: window.contentItem.bottom; left: window.contentItem.left }
+        width: 12; height: 12
+        HoverHandler { cursorShape: Qt.SizeBDiagCursor }
+        DragHandler {
+            target: null
+            grabPermissions: PointerHandler.TakeOverForbidden
+            onActiveChanged: if (active) window.startSystemResize(Qt.BottomEdge | Qt.LeftEdge)
+        }
+    }
+    // Bottom-right corner
+    Item {
+        visible: window.cleanView
+        z: 200
+        anchors { bottom: window.contentItem.bottom; right: window.contentItem.right }
+        width: 12; height: 12
+        HoverHandler { cursorShape: Qt.SizeFDiagCursor }
+        DragHandler {
+            target: null
+            grabPermissions: PointerHandler.TakeOverForbidden
+            onActiveChanged: if (active) window.startSystemResize(Qt.BottomEdge | Qt.RightEdge)
+        }
+    }
+    // Top-left corner
+    Item {
+        visible: window.cleanView
+        z: 200
+        anchors { top: window.contentItem.top; left: window.contentItem.left }
+        width: 12; height: 12
+        HoverHandler { cursorShape: Qt.SizeFDiagCursor }
+        DragHandler {
+            target: null
+            grabPermissions: PointerHandler.TakeOverForbidden
+            onActiveChanged: if (active) window.startSystemResize(Qt.TopEdge | Qt.LeftEdge)
+        }
+    }
+    // Top-right corner
+    Item {
+        visible: window.cleanView
+        z: 200
+        anchors { top: window.contentItem.top; right: window.contentItem.right }
+        width: 12; height: 12
+        HoverHandler { cursorShape: Qt.SizeBDiagCursor }
+        DragHandler {
+            target: null
+            grabPermissions: PointerHandler.TakeOverForbidden
+            onActiveChanged: if (active) window.startSystemResize(Qt.TopEdge | Qt.RightEdge)
         }
     }
 
@@ -549,6 +668,21 @@ ApplicationWindow {
         if (GeneralSettings.fullscreenOnStartUp && hasFileToOpen) {
             toggleFullScreen()
         }
+
+        if (SystemUtils.isPlatformWayland()) {
+            // Qt creates the xdg-decoration protocol object lazily on the first
+            // Qt.FramelessWindowHint assignment. That first creation triggers an
+            // extra compositor configure round-trip on top of the mode-change
+            // configure, so the very first user-triggered clean-view toggle
+            // would need two cycles — one more than our double-update provides.
+            // Warm up the decoration object now by silently toggling the flag.
+            // Both assignments happen in the same JS frame so no intermediate
+            // frameless surface is ever committed; KWin only sees the final
+            // decorated state. The decoration object is created and its initial
+            // configure processed by Qt's event loop before the user can act.
+            window.flags |= Qt.FramelessWindowHint
+            window.flags &= ~Qt.FramelessWindowHint
+        }
     }
 
     function openFile(path: string, openedFrom: int) : void {
@@ -562,6 +696,10 @@ ApplicationWindow {
 
     function isMaximized() : bool {
         return window.visibility === Window.Maximized
+    }
+
+    function isCleanView() : bool {
+        return window.cleanView
     }
 
     function toggleFullScreen() : void {
@@ -581,8 +719,68 @@ ApplicationWindow {
         }
     }
 
+    // Geometry snapshot used to survive the hide/show cycle in toggleCleanView.
+    QtObject {
+        id: cleanViewGeometry
+        property bool fixing: false
+        property int x: 0
+        property int y: 0
+        property int w: 0
+        property int h: 0
+    }
+
+    // Intercept every WM-driven geometry change while a clean-view toggle is
+    // in flight. The WM sends ConfigureNotify at an unpredictable point in the
+    // hide/show cycle — reacting here catches it regardless of ordering.
+    onXChanged:      if (cleanViewGeometry.fixing) window.x      = cleanViewGeometry.x
+    onYChanged:      if (cleanViewGeometry.fixing) window.y      = cleanViewGeometry.y
+    onWidthChanged:  if (cleanViewGeometry.fixing) window.width  = cleanViewGeometry.w
+    onHeightChanged: if (cleanViewGeometry.fixing) window.height = cleanViewGeometry.h
+
+    // Once the window is active the WM is done with placement. Do a final
+    // authoritative set and release the geometry lock.
+    onActiveChanged: {
+        if (active && cleanViewGeometry.fixing) {
+            cleanViewGeometry.fixing = false
+            window.x      = cleanViewGeometry.x
+            window.y      = cleanViewGeometry.y
+            window.width  = cleanViewGeometry.w
+            window.height = cleanViewGeometry.h
+        }
+    }
+
+    function toggleCleanView() : void {
+        window.cleanView = !window.cleanView
+        if (window.cleanView) {
+            window.flags |= Qt.FramelessWindowHint
+        } else {
+            window.flags &= ~Qt.FramelessWindowHint
+        }
+
+        if (SystemUtils.isPlatformWayland()) {
+            // On Wayland, toggling Qt.FramelessWindowHint alone sends the
+            // decoration protocol message but the compositor needs a Wayland
+            // surface commit to process it and send the configure event back.
+            // QQuickWindow::update() schedules a render frame which performs
+            // that commit — no surface destruction, no position reset.
+            HarunaApp.updateWindowDecorations()
+            return
+        }
+
+        // X11: force the WM to re-apply decoration changes immediately.
+        // Without this the native title bar lingers until the next minimize/restore.
+        // Snapshot geometry first; the onX/onY/onActive handlers restore it.
+        cleanViewGeometry.x = window.x
+        cleanViewGeometry.y = window.y
+        cleanViewGeometry.w = window.width
+        cleanViewGeometry.h = window.height
+        cleanViewGeometry.fixing = true
+        window.hide()
+        window.show()
+    }
+
     function resizeWindow() : void {
-        if (SystemUtils.isPlatformWayland() || !GeneralSettings.resizeWindowToVideo || isFullScreen()) {
+        if (SystemUtils.isPlatformWayland() || !GeneralSettings.resizeWindowToVideo || isFullScreen() || isCleanView()) {
             return
         }
 

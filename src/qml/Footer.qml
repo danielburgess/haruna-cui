@@ -305,7 +305,7 @@ Item {
 
         function staticState() {
             const mainWindow = Window.window as Main
-            if (!mainWindow.isFullScreen() || (root.m_mpv.mouseY > root.m_mpv.height - footer.height * 2 && mainWindow.containsMouse)) {
+            if ((!mainWindow.isFullScreen() && !mainWindow.isCleanView()) || (root.m_mpv.mouseY > root.m_mpv.height - footer.height * 2 && mainWindow.containsMouse)) {
                 root.footerState = "visible"
             } else {
                 root.footerState = "hidden"

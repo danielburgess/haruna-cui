@@ -17,6 +17,16 @@ Menu {
     MenuItem { action: HarunaApp.actions.toggleFullscreenAction }
 
     MenuItem {
+        action: HarunaApp.actions.toggleCleanViewAction
+        text: {
+            const mainWindow = Window.window as Main
+            return mainWindow?.isCleanView()
+                   ? i18nc("@action:inmenu", "Exit Clean View")
+                   : i18nc("@action:inmenu", "Clean View")
+        }
+    }
+
+    MenuItem {
         action: HarunaApp.actions.toggleMenuBarAction
         text: {
             const mainWindow = Window.window as Main

@@ -384,6 +384,11 @@ Item {
             mainWindow.toggleFullScreen()
         }
 
+        function onToggleCleanViewAction() {
+            const mainWindow = root.Window.window as Main
+            mainWindow.toggleCleanView()
+        }
+
         function onToggleMenuBarAction() {
             GeneralSettings.showMenuBar = !GeneralSettings.showMenuBar
             GeneralSettings.save()

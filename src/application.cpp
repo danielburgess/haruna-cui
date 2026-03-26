@@ -15,6 +15,7 @@
 #include <QMimeDatabase>
 #include <QQmlApplicationEngine>
 #include <QQuickView>
+#include <QQuickWindow>
 #include <QStandardPaths>
 #include <QStyle>
 #include <QStyleFactory>
@@ -274,6 +275,40 @@ void Application::raiseWindow()
         KWindowSystem::updateStartupId(window);
         KWindowSystem::activateWindow(window);
     }
+}
+
+void Application::updateWindowDecorations()
+{
+    if (!m_qmlEngine || m_qmlEngine->rootObjects().isEmpty()) {
+        return;
+    }
+    QObject *rootObject = m_qmlEngine->rootObjects().constFirst();
+    if (!rootObject) {
+        return;
+    }
+    auto *window = qobject_cast<QQuickWindow *>(rootObject);
+    if (!window) {
+        return;
+    }
+
+    // On Wayland, toggling Qt.FramelessWindowHint communicates the decoration
+    // mode change to KWin via the xdg-decoration protocol. KWin responds with
+    // a configure event that Qt must ack before the next surface commit for
+    // the change to take effect. Two sequential renders are needed:
+    //
+    //   Render 1 (immediate): commits the surface so KWin processes our
+    //                         set_mode() request and sends configure(s) back.
+    //   Render 2 (queued):    fires after the main thread's event loop has
+    //                         read KWin's configure from the Wayland socket
+    //                         and Qt has ack'd it, so this commit finalises
+    //                         the decoration state change.
+    window->update();
+    QMetaObject::invokeMethod(
+        window,
+        [window]() {
+            window->update();
+        },
+        Qt::QueuedConnection);
 }
 
 #include "moc_application.cpp"
